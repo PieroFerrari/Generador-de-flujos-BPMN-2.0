@@ -6,8 +6,13 @@
     <title>Generador de Scripts BPMN con IA</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; display: flex; justify-content: center; }
-        .container { background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 100%; max-width: 800px; }
+        .container { background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 100%; max-width: 800px; position: relative; }
         h1 { color: #333; text-align: center; }
+        
+        /* Botón para cambiar la llave de forma segura */
+        .btn-key { position: absolute; top: 15px; right: 20px; background-color: #f1f3f5; border: 1px solid #ced4da; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; color: #495057; }
+        .btn-key:hover { background-color: #e2e6ea; }
+
         .header-prompt { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; margin-bottom: 5px; }
         label { font-weight: bold; color: #555; margin: 0; }
         textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-family: monospace; resize: vertical; transition: background-color 0.3s; }
@@ -35,7 +40,7 @@
             height: 16px;
             animation: spin 1s linear infinite;
             margin-right: 10px;
-            display: none; /* Oculto por defecto */
+            display: none;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(255, 71, 87, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); } }
@@ -50,13 +55,14 @@
 <body>
 
 <div class="container">
+    <button class="btn-key" onclick="cambiarClave()">🔑 Cambiar API Key</button>
     <h1>Asistente BPMN 2.0</h1>
     
     <div class="header-prompt">
         <label for="prompt">1. Describe el proceso (Usuario):</label>
         <button id="btnDictar" onclick="toggleDictado()">🎤 Iniciar Dictado</button>
     </div>
-    <textarea id="prompt" rows="5" placeholder="Ejemplo: El proceso inicia cuando..."></textarea>
+    <textarea id="prompt" rows="5" placeholder="Ejemplo: El proceso inicia cuando Recursos Humanos solicita..."></textarea>
     
     <div class="button-group">
         <button id="btnGenerar" onclick="generarBPMN()">
@@ -76,10 +82,34 @@
 </div>
 
 <script>
-    // --- CONFIGURACIÓN DE LA IA ---
-    const API_KEY = 'AIzaSyD12BmLIVuEBlYpkujqQVZypMLQhkSmIGs'; 
+    // --- GESTIÓN DE LA API KEY (Seguro y local) ---
+    let API_KEY = localStorage.getItem('gemini_key');
 
-    // --- CONFIGURACIÓN DE VOZ (Se mantiene igual) ---
+    // Pedir la clave solo si no existe
+    if (!API_KEY) {
+        pedirClave();
+    }
+
+    function pedirClave() {
+        let clave = prompt("Para usar el generador, ingresa tu API Key de Google Gemini:");
+        if (clave && clave.trim() !== "") {
+            API_KEY = clave.trim();
+            localStorage.setItem('gemini_key', API_KEY);
+        } else {
+            alert("⚠️ Sin API Key, la IA no podrá generar los flujos.");
+        }
+    }
+
+    function cambiarClave() {
+        let nuevaClave = prompt("Ingresa la nueva API Key:", API_KEY || "");
+        if (nuevaClave && nuevaClave.trim() !== "") {
+            API_KEY = nuevaClave.trim();
+            localStorage.setItem('gemini_key', API_KEY);
+            mostrarMensaje("API Key actualizada correctamente.", "success");
+        }
+    }
+
+    // --- CONFIGURACIÓN DE VOZ ---
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition;
     let isRecording = false;
@@ -111,10 +141,10 @@
     function mostrarMensaje(texto, tipo) {
         const statusBox = document.getElementById('statusMessage');
         statusBox.innerText = texto;
-        statusBox.className = `status ${tipo}`; // Aplica el color según el tipo (error, success, info)
+        statusBox.className = `status ${tipo}`;
     }
 
-    // --- LÓGICA DE GENERACIÓN MEJORADA ---
+    // --- LÓGICA DE GENERACIÓN ---
     async function generarBPMN() {
         const promptInput = document.getElementById('prompt');
         const promptText = promptInput.value;
@@ -129,18 +159,19 @@
         if (!promptText.trim()) {
             return mostrarMensaje("Por favor, ingresa una descripción del proceso antes de generar.", "error");
         }
-        if (API_KEY === 'TU_API_KEY_AQUI') {
-            return mostrarMensaje("Error de configuración: Debes colocar tu API KEY en el código fuente.", "error");
+        if (!API_KEY) {
+            pedirClave();
+            return;
         }
 
         if (isRecording) detenerDictado();
 
         // 1. ACTIVAR ESTADO DE CARGA ("PENSANDO")
         btnGenerar.disabled = true;
-        promptInput.disabled = true; // Bloquea la escritura temporalmente
-        spinner.style.display = "inline-block"; // Muestra el circulito
-        btnText.innerText = " La IA está pensando..."; // Cambia el texto
-        statusBox.style.display = "none"; // Oculta mensajes anteriores
+        promptInput.disabled = true; 
+        spinner.style.display = "inline-block"; 
+        btnText.innerText = " La IA está diseñando..."; 
+        statusBox.style.display = "none"; 
         scriptViewer.value = "";
         btnDescargar.style.display = 'none';
 
@@ -155,11 +186,13 @@
         4. Inventa coordenadas (x, y, width, height) para las etiquetas <dc:Bounds>. No importa si se superponen, pero DEBEN existir.
         5. Asegúrate de que cada 'bpmnElement' en la sección gráfica coincida exactamente con el 'id' del elemento en el proceso.
         6. Devuelve ÚNICAMENTE código XML crudo. Sin markdown, sin explicaciones.
-        7. Debes identificar entidades y separarlas sus tareas en carriles.
+        7. Debes identificar entidades y separarlas sus tareas en carriles (lanes).
+        
         Para la sección visual <bpmndi:BPMNDiagram>:
         1. Crea un <bpmndi:BPMNShape> para cada elemento.
         2. Usa una cuadrícula simple: para el primer elemento x=150, y=100. Para los siguientes, suma 200 a la 'x' (150, 350, 550...) manteniendo la 'y' en 100.
         3. Esto evitará que Bizagi amontone todo en el punto (0,0) y te dé el error de instancia.
+        
         Proceso a modelar: ${promptText}`;
 
         try {
@@ -170,12 +203,14 @@
                 body: JSON.stringify({ contents: [{ parts: [{ text: instrucciones }] }] })
             });
 
-            // 3. MANEJO DE ERRORES ESPECÍFICOS
+            // 3. MANEJO DE ERRORES
             if (!response.ok) {
                 if (response.status === 403 || response.status === 401) {
-                    throw new Error("Permiso denegado: Tu API Key es inválida o expiró.");
+                    throw new Error("Permiso denegado: Tu API Key es inválida o expiró. Haz clic en 'Cambiar API Key'.");
                 } else if (response.status === 400) {
                     throw new Error("Solicitud incorrecta: Revisa el texto que ingresaste.");
+                } else if (response.status === 404) {
+                    throw new Error("Error 404: No se encontró el modelo. Verifica la URL de la API.");
                 } else {
                     throw new Error(`Fallo de comunicación con la IA (Error ${response.status}).`);
                 }
@@ -194,15 +229,15 @@
             // 5. ESTADO DE ERROR CAPTURADO
             console.error(error);
             if (error.message.includes("Failed to fetch")) {
-                mostrarMensaje("Error de red: Comprueba tu conexión a internet.", "error");
+                mostrarMensaje("Error de red: Comprueba tu conexión a internet o la API Key.", "error");
             } else {
                 mostrarMensaje(error.message, "error");
             }
         } finally {
-            // 6. RESTAURAR LA INTERFAZ (Termine bien o mal)
+            // 6. RESTAURAR LA INTERFAZ
             btnGenerar.disabled = false;
-            promptInput.disabled = false; // Desbloquea la escritura
-            spinner.style.display = "none"; // Oculta el circulito
+            promptInput.disabled = false;
+            spinner.style.display = "none";
             btnText.innerText = "Generar Script BPMN";
         }
     }
