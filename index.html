@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de Scripts BPMN con IA</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .container { background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 100%; max-width: 800px; }
+        h1 { color: #333; text-align: center; }
+        .header-prompt { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; margin-bottom: 5px; }
+        label { font-weight: bold; color: #555; margin: 0; }
+        textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-family: monospace; resize: vertical; transition: background-color 0.3s; }
+        textarea:disabled { background-color: #e9ecef; color: #6c757d; }
+        .button-group { display: flex; gap: 10px; margin-top: 15px; }
+        button { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: background-color 0.3s; display: flex; align-items: center; justify-content: center; }
+        
+        #btnGenerar { background-color: #007bff; color: white; flex-grow: 1; }
+        #btnGenerar:hover { background-color: #0056b3; }
+        #btnGenerar:disabled { background-color: #6c757d; cursor: not-allowed; }
+        
+        #btnDescargar { background-color: #28a745; color: white; display: none; }
+        #btnDescargar:hover { background-color: #1e7e34; }
+
+        #btnDictar { background-color: #ff4757; color: white; padding: 5px 15px; border-radius: 20px; font-size: 14px; }
+        #btnDictar:hover { background-color: #ff6b81; }
+        #btnDictar.grabando { background-color: #ff0000; animation: pulse 1.5s infinite; }
+
+        /* Animación del Spinner */
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid white;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+            display: none; /* Oculto por defecto */
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(255, 71, 87, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); } }
+        
+        /* Estilos para mensajes de estado */
+        .status { margin-top: 15px; font-size: 14px; text-align: center; font-weight: bold; padding: 10px; border-radius: 4px; display: none; }
+        .status.error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; display: block; }
+        .status.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; display: block; }
+        .status.info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; display: block; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Asistente BPMN 2.0</h1>
+    
+    <div class="header-prompt">
+        <label for="prompt">1. Describe el proceso (Usuario):</label>
+        <button id="btnDictar" onclick="toggleDictado()">🎤 Iniciar Dictado</button>
+    </div>
+    <textarea id="prompt" rows="5" placeholder="Ejemplo: El proceso inicia cuando..."></textarea>
+    
+    <div class="button-group">
+        <button id="btnGenerar" onclick="generarBPMN()">
+            <div id="loadingSpinner" class="spinner"></div>
+            <span id="btnText">Generar Script BPMN</span>
+        </button>
+    </div>
+    
+    <div id="statusMessage" class="status"></div>
+
+    <label for="scriptViewer" style="display: block; margin-top: 20px; font-weight: bold; color: #555;">2. Script Generado (Visualizar Script):</label>
+    <textarea id="scriptViewer" rows="15" readonly placeholder="El código XML del diagrama aparecerá aquí..."></textarea>
+    
+    <div class="button-group">
+        <button id="btnDescargar" onclick="descargarArchivo()">Descargar Archivo .bpmn</button>
+    </div>
+</div>
+
+<script>
+    // --- CONFIGURACIÓN DE LA IA ---
+    const API_KEY = 'AIzaSyD12BmLIVuEBlYpkujqQVZypMLQhkSmIGs'; 
+
+    // --- CONFIGURACIÓN DE VOZ (Se mantiene igual) ---
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition;
+    let isRecording = false;
+
+    if (SpeechRecognition) {
+        recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.lang = 'es-ES';
+        recognition.interimResults = false;
+        recognition.onresult = function(event) {
+            const transcript = event.results[event.results.length - 1][0].transcript;
+            const textarea = document.getElementById('prompt');
+            textarea.value += (textarea.value.length > 0 ? ' ' : '') + transcript.trim() + '. ';
+        };
+        recognition.onerror = function(event) {
+            detenerDictado();
+            mostrarMensaje("Error con el micrófono: " + event.error, "error");
+        };
+    }
+
+    function toggleDictado() {
+        if (!recognition) return alert("Navegador no soporta dictado. Usa Chrome.");
+        isRecording ? detenerDictado() : iniciarDictado();
+    }
+    function iniciarDictado() { recognition.start(); isRecording = true; document.getElementById('btnDictar').innerText = "🔴 Escuchando..."; document.getElementById('btnDictar').classList.add('grabando'); }
+    function detenerDictado() { recognition.stop(); isRecording = false; document.getElementById('btnDictar').innerText = "🎤 Iniciar Dictado"; document.getElementById('btnDictar').classList.remove('grabando'); }
+
+    // --- FUNCIÓN PARA MOSTRAR MENSAJES EN PANTALLA ---
+    function mostrarMensaje(texto, tipo) {
+        const statusBox = document.getElementById('statusMessage');
+        statusBox.innerText = texto;
+        statusBox.className = `status ${tipo}`; // Aplica el color según el tipo (error, success, info)
+    }
+
+    // --- LÓGICA DE GENERACIÓN MEJORADA ---
+    async function generarBPMN() {
+        const promptInput = document.getElementById('prompt');
+        const promptText = promptInput.value;
+        const btnGenerar = document.getElementById('btnGenerar');
+        const spinner = document.getElementById('loadingSpinner');
+        const btnText = document.getElementById('btnText');
+        const scriptViewer = document.getElementById('scriptViewer');
+        const btnDescargar = document.getElementById('btnDescargar');
+        const statusBox = document.getElementById('statusMessage');
+
+        // Validaciones iniciales
+        if (!promptText.trim()) {
+            return mostrarMensaje("Por favor, ingresa una descripción del proceso antes de generar.", "error");
+        }
+        if (API_KEY === 'TU_API_KEY_AQUI') {
+            return mostrarMensaje("Error de configuración: Debes colocar tu API KEY en el código fuente.", "error");
+        }
+
+        if (isRecording) detenerDictado();
+
+        // 1. ACTIVAR ESTADO DE CARGA ("PENSANDO")
+        btnGenerar.disabled = true;
+        promptInput.disabled = true; // Bloquea la escritura temporalmente
+        spinner.style.display = "inline-block"; // Muestra el circulito
+        btnText.innerText = " La IA está pensando..."; // Cambia el texto
+        statusBox.style.display = "none"; // Oculta mensajes anteriores
+        scriptViewer.value = "";
+        btnDescargar.style.display = 'none';
+
+        const URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
+        const instrucciones = `Eres un experto técnico en modelado de procesos y el estándar BPMN 2.0. 
+        Convierte la siguiente descripción en código XML estricto bajo BPMN 2.0.
+        
+        REGLAS CRÍTICAS (DEBES CUMPLIRLAS PARA EVITAR ERRORES DE IMPORTACIÓN):
+        1. El XML DEBE contener la sección semántica (<bpmn:process>) Y la sección visual obligatoria (<bpmndi:BPMNDiagram>).
+        2. TODOS los elementos (tareas, eventos, compuertas) deben tener su correspondiente etiqueta <bpmndi:BPMNShape> dentro de <bpmndi:BPMNPlane>.
+        3. TODAS las secuencias deben tener su <bpmndi:BPMNEdge>.
+        4. Inventa coordenadas (x, y, width, height) para las etiquetas <dc:Bounds>. No importa si se superponen, pero DEBEN existir.
+        5. Asegúrate de que cada 'bpmnElement' en la sección gráfica coincida exactamente con el 'id' del elemento en el proceso.
+        6. Devuelve ÚNICAMENTE código XML crudo. Sin markdown, sin explicaciones.
+        7. Debes identificar entidades y separarlas sus tareas en carriles.
+        Para la sección visual <bpmndi:BPMNDiagram>:
+        1. Crea un <bpmndi:BPMNShape> para cada elemento.
+        2. Usa una cuadrícula simple: para el primer elemento x=150, y=100. Para los siguientes, suma 200 a la 'x' (150, 350, 550...) manteniendo la 'y' en 100.
+        3. Esto evitará que Bizagi amontone todo en el punto (0,0) y te dé el error de instancia.
+        Proceso a modelar: ${promptText}`;
+
+        try {
+            // 2. ENVIAR PETICIÓN A GOOGLE
+            const response = await fetch(URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ contents: [{ parts: [{ text: instrucciones }] }] })
+            });
+
+            // 3. MANEJO DE ERRORES ESPECÍFICOS
+            if (!response.ok) {
+                if (response.status === 403 || response.status === 401) {
+                    throw new Error("Permiso denegado: Tu API Key es inválida o expiró.");
+                } else if (response.status === 400) {
+                    throw new Error("Solicitud incorrecta: Revisa el texto que ingresaste.");
+                } else {
+                    throw new Error(`Fallo de comunicación con la IA (Error ${response.status}).`);
+                }
+            }
+
+            const data = await response.json();
+            let scriptGenerado = data.candidates[0].content.parts[0].text;
+            scriptGenerado = scriptGenerado.replace(/```xml/gi, '').replace(/```/g, '').trim();
+
+            // 4. ESTADO DE ÉXITO
+            scriptViewer.value = scriptGenerado;
+            btnDescargar.style.display = 'block';
+            mostrarMensaje("¡Diagrama generado con éxito! Puedes visualizarlo o descargarlo.", "success");
+            
+        } catch (error) {
+            // 5. ESTADO DE ERROR CAPTURADO
+            console.error(error);
+            if (error.message.includes("Failed to fetch")) {
+                mostrarMensaje("Error de red: Comprueba tu conexión a internet.", "error");
+            } else {
+                mostrarMensaje(error.message, "error");
+            }
+        } finally {
+            // 6. RESTAURAR LA INTERFAZ (Termine bien o mal)
+            btnGenerar.disabled = false;
+            promptInput.disabled = false; // Desbloquea la escritura
+            spinner.style.display = "none"; // Oculta el circulito
+            btnText.innerText = "Generar Script BPMN";
+        }
+    }
+
+    function descargarArchivo() {
+        const contenido = document.getElementById('scriptViewer').value;
+        if (!contenido) return;
+        const blob = new Blob([contenido], { type: 'text/xml' });
+        const enlace = document.createElement('a');
+        enlace.href = URL.createObjectURL(blob);
+        enlace.download = 'proceso_generado.bpmn';
+        document.body.appendChild(enlace);
+        enlace.click();
+        document.body.removeChild(enlace);
+    }
+</script>
+
+</body>
+</html>
