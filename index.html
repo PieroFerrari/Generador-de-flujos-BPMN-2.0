@@ -3,257 +3,372 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generador de Scripts BPMN con IA</title>
+    <title>Portal de Procesos - Herramientas IA</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,800;1,900&display=swap" rel="stylesheet">
+    
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; display: flex; justify-content: center; }
-        .container { background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 100%; max-width: 800px; position: relative; }
-        h1 { color: #333; text-align: center; }
-        
-        /* Botón para cambiar la llave de forma segura */
-        .btn-key { position: absolute; top: 15px; right: 20px; background-color: #f1f3f5; border: 1px solid #ced4da; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; color: #495057; }
-        .btn-key:hover { background-color: #e2e6ea; }
-
-        .header-prompt { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; margin-bottom: 5px; }
-        label { font-weight: bold; color: #555; margin: 0; }
-        textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-family: monospace; resize: vertical; transition: background-color 0.3s; }
-        textarea:disabled { background-color: #e9ecef; color: #6c757d; }
-        .button-group { display: flex; gap: 10px; margin-top: 15px; }
-        button { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: background-color 0.3s; display: flex; align-items: center; justify-content: center; }
-        
-        #btnGenerar { background-color: #007bff; color: white; flex-grow: 1; }
-        #btnGenerar:hover { background-color: #0056b3; }
-        #btnGenerar:disabled { background-color: #6c757d; cursor: not-allowed; }
-        
-        #btnDescargar { background-color: #28a745; color: white; display: none; }
-        #btnDescargar:hover { background-color: #1e7e34; }
-
-        #btnDictar { background-color: #ff4757; color: white; padding: 5px 15px; border-radius: 20px; font-size: 14px; }
-        #btnDictar:hover { background-color: #ff6b81; }
-        #btnDictar.grabando { background-color: #ff0000; animation: pulse 1.5s infinite; }
-
-        /* Animación del Spinner */
-        .spinner {
-            border: 3px solid rgba(255, 255, 255, 0.3);
-            border-top: 3px solid white;
-            border-radius: 50%;
-            width: 16px;
-            height: 16px;
-            animation: spin 1s linear infinite;
-            margin-right: 10px;
-            display: none;
+        /* ==========================================
+           ESTILOS GLOBALES - ESTÉTICA "SHALOM"
+           ========================================== */
+        :root {
+            --shalom-red: #E31820;      
+            --shalom-dark: #1A2530;     
+            --shalom-light: #F8F9FA;    
+            --shalom-border: #E5E7EB;   
         }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(255, 71, 87, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); } }
+
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--shalom-light); margin: 0; color: #333; }
         
-        /* Estilos para mensajes de estado */
-        .status { margin-top: 15px; font-size: 14px; text-align: center; font-weight: bold; padding: 10px; border-radius: 4px; display: none; }
-        .status.error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; display: block; }
-        .status.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; display: block; }
-        .status.info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; display: block; }
+        /* BARRA DE NAVEGACIÓN */
+        .navbar { background-color: var(--shalom-red); padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        
+        /* Tipografía actualizada para el título */
+        .navbar-title { font-family: 'Montserrat', sans-serif; font-size: 24px; font-weight: 900; font-style: italic; letter-spacing: 1px; } 
+        
+        .tabs { display: flex; gap: 15px; }
+        .tab-btn { background-color: transparent; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; transition: all 0.3s; font-size: 15px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        .tab-btn:hover { background-color: rgba(255,255,255,0.15); }
+        .tab-btn.active { background-color: white; color: var(--shalom-red); }
+        
+        .btn-key { background-color: var(--shalom-dark); color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-size: 12px; font-weight: bold; margin-left: 20px; align-self: center; }
+        .btn-key:hover { background-color: #0f161d; }
+        
+        .tab-content { display: none; padding: 30px 20px; }
+        .tab-content.active { display: block; }
+
+        /* TÍTULOS GENERALES */
+        h1, .form-title { color: var(--shalom-dark); text-align: center; font-size: 28px; font-weight: bold; margin-bottom: 30px; }
+        label { font-weight: bold; color: var(--shalom-dark); margin: 0; }
+
+        /* ==========================================
+           MÓDULO BPMN
+           ========================================== */
+        .bpmn-container { background-color: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); max-width: 800px; margin: 0 auto; border-top: 4px solid var(--shalom-red); }
+        .header-prompt { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; margin-bottom: 5px; }
+        .bpmn-container textarea { width: 100%; padding: 12px; border: 1px solid var(--shalom-border); border-radius: 4px; box-sizing: border-box; font-family: monospace; resize: vertical; margin-bottom: 15px; outline-color: var(--shalom-red); }
+        
+        .button-group { display: flex; gap: 10px; margin-top: 15px; }
+        .bpmn-btn { padding: 12px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; flex-grow: 1; color: white; display: flex; justify-content: center; align-items: center; font-size: 15px; transition: 0.3s; }
+        
+        #btnGenerarBPMN { background-color: var(--shalom-red); }
+        #btnGenerarBPMN:hover { background-color: #C1141B; }
+        #btnDescargarBPMN { background-color: var(--shalom-dark); display: none; }
+        #btnDescargarBPMN:hover { background-color: #0f161d; }
+        
+        #btnDictar { background-color: white; color: var(--shalom-red); border: 2px solid var(--shalom-red); padding: 5px 15px; border-radius: 20px; font-size: 14px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        #btnDictar:hover { background-color: var(--shalom-red); color: white; }
+        
+        .spinner { border: 3px solid rgba(255,255,255,0.3); border-top: 3px solid white; border-radius: 50%; width: 16px; height: 16px; animation: spin 1s linear infinite; margin-right: 10px; display: none; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* ==========================================
+           MÓDULO SIPOC (FORMULARIO)
+           ========================================== */
+        #form-view { display: flex; flex-direction: column; align-items: center; }
+        .form-container { background-color: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); width: 100%; max-width: 900px; border-top: 4px solid var(--shalom-red); }
+        .form-group { margin-bottom: 25px; }
+        .hint { font-size: 12px; color: #7f8c8d; font-weight: normal; margin-left: 5px; }
+        
+        #in-titulo { width: 70%; height: 50px; font-size: 22px; font-weight: bold; display: block; margin: 0 auto 30px auto; text-align: center; border: 2px solid var(--shalom-border); border-radius: 8px; color: var(--shalom-dark); outline-color: var(--shalom-red); }
+        
+        .input-with-numbers { display: flex; position: relative; border: 1px solid var(--shalom-border); border-radius: 8px; overflow: hidden; font-size: 14px; line-height: 1.6; background: white; }
+        .line-numbers { width: 40px; background-color: var(--shalom-light); color: #999; padding: 12px 0; text-align: right; border-right: 1px solid var(--shalom-border); user-select: none; box-sizing: border-box; }
+        .line-number { padding-right: 10px; height: 1.6em; }
+        .text-input-container { position: relative; flex: 1; }
+        .input-textarea, .text-display { width: 100%; padding: 12px; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; font-size: 14px; line-height: 1.6; background: transparent; margin: 0; min-height: 120px; }
+        .input-textarea { border: none; resize: vertical; color: transparent; caret-color: #333; position: relative; z-index: 2; outline: none; }
+        .text-display { position: absolute; top: 0; left: 0; z-index: 1; white-space: pre-wrap; word-wrap: break-word; color: #333; pointer-events: none; }
+        .over-limit { color: var(--shalom-red) !important; font-weight: bold; background-color: rgba(227, 24, 32, 0.1); }
+        
+        .btn-primary { background-color: var(--shalom-red); color: white; border: none; padding: 18px 30px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; width: 100%; transition: all 0.3s; margin-top: 10px; }
+        .btn-primary:hover { background-color: #C1141B; }
+        
+        /* ==========================================
+           MÓDULO SIPOC (DIAGRAMA VISUAL)
+           ========================================== */
+        #diagram-view { display: none; flex-direction: column; align-items: center; }
+        .toolbar { display: flex; gap: 15px; margin-bottom: 25px; background: white; padding: 15px 30px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .btn-export { background-color: var(--shalom-red); color: white; border: none; padding: 10px 20px; font-size: 14px; font-weight: bold; border-radius: 4px; cursor: pointer; transition: 0.3s; }
+        .btn-export:hover { background-color: #C1141B; }
+        .btn-pdf { background-color: var(--shalom-dark); }
+        .btn-pdf:hover { background-color: #0f161d; }
+        .btn-back { background-color: white; color: var(--shalom-dark); border: 1px solid var(--shalom-border); }
+        .btn-back:hover { background-color: var(--shalom-light); }
+        
+        #sipoc-canvas { width: 100%; min-width: 1250px; max-width: 1600px; background-color: #ffffff; padding: 40px; box-sizing: border-box; display: flex; flex-direction: column; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border-top: 8px solid var(--shalom-red); }
+        
+        .header { display: flex; align-items: center; padding-bottom: 30px; border-bottom: 2px solid var(--shalom-light); margin-bottom: 30px; }
+        .header-title { font-family: 'Montserrat', sans-serif; color: var(--shalom-dark); font-size: 42px; font-weight: 900; font-style: italic; line-height: 1.1; margin-right: 30px; border-right: 2px solid var(--shalom-border); padding-right: 30px; }
+        .header-title span { color: var(--shalom-red); } 
+        .header-subtitle { color: #555; font-size: 16px; max-width: 600px; line-height: 1.5; }
+        #out-titulo { margin-left: auto; font-size: 28px; font-weight: 900; color: var(--shalom-dark); text-transform: uppercase; }
+        
+        .sipoc-grid { display: flex; flex: 1; width: 100%; align-items: stretch; gap: 20px; }
+        .col { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 30px 15px; border-radius: 8px; }
+        
+        .col-dark { background-color: var(--shalom-red); color: white; }
+        .col-light { background-color: var(--shalom-light); color: var(--shalom-dark); border: 1px solid var(--shalom-border); }
+        
+        .circle-dark { width: 50px; height: 50px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 24px; font-weight: bold; margin-bottom: 15px; }
+        .col-dark .circle-dark { background-color: white; color: var(--shalom-red); }
+        .col-light .circle-dark { background-color: var(--shalom-red); color: white; }
+        
+        .col-title { font-size: 18px; font-weight: bold; margin-bottom: 30px; text-transform: uppercase; }
+        
+        .card { width: 95%; min-height: 60px; margin-bottom: 15px; display: flex; justify-content: center; align-items: center; text-align: center; font-weight: bold; font-size: 13px; padding: 12px; box-sizing: border-box; border-radius: 4px; }
+        
+        .card-lightpill { background-color: white; color: var(--shalom-dark); border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .card-darkpill { background-color: var(--shalom-dark); color: white; border: none; }
+        .card-white { background-color: white; color: var(--shalom-dark); border-left: 4px solid var(--shalom-dark); box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        
+        /* CORRECCIÓN: FLECHAS CENTRADAS */
+        .arrow { font-size: 20px; font-weight: bold; margin-bottom: 5px; text-align: center; display: block; width: 100%; }
+        .col-dark .arrow { color: white; }
+        .col-light .arrow { color: var(--shalom-red); }
+        
+        .status { margin-top: 15px; padding: 10px; text-align: center; font-weight: bold; border-radius: 4px; display: none; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <button class="btn-key" onclick="cambiarClave()">🔑 Cambiar API Key</button>
-    <h1>Asistente BPMN 2.0</h1>
-    
-    <div class="header-prompt">
-        <label for="prompt">1. Describe el proceso (Usuario):</label>
-        <button id="btnDictar" onclick="toggleDictado()">🎤 Iniciar Dictado</button>
+    <div class="navbar">
+        <div class="navbar-title">PORTAL DE PROCESOS</div>
+        <div class="tabs">
+            <button id="btn-tab-sipoc" class="tab-btn active" onclick="switchTab('sipoc')">Diagramas SIPOC</button>
+            <button id="btn-tab-bpmn" class="tab-btn" onclick="switchTab('bpmn')">Flujos BPMN</button>
+            <button class="btn-key" onclick="cambiarClave()">🔑 API Key</button>
+        </div>
     </div>
-    <textarea id="prompt" rows="5" placeholder="Ejemplo: El proceso inicia cuando Recursos Humanos solicita..."></textarea>
-    
-    <div class="button-group">
-        <button id="btnGenerar" onclick="generarBPMN()">
-            <div id="loadingSpinner" class="spinner"></div>
-            <span id="btnText">Generar Script BPMN</span>
-        </button>
+
+    <div id="tab-sipoc" class="tab-content active">
+        <div id="form-view">
+            <div class="form-container">
+                <h1 class="form-title">Generador SIPOC</h1>
+                <input type="text" id="in-titulo" placeholder="Nombre del proceso">
+                <div class="form-group">
+                    <label>Proveedores <span class="hint">(Máx. 60 caracteres)</span></label>
+                    <div class="input-with-numbers"><div id="gutter-s" class="line-numbers"></div><div class="text-input-container"><textarea id="in-s" class="input-textarea" rows="3"></textarea><div id="display-s" class="text-display"></div></div></div>
+                </div>
+                <div class="form-group">
+                    <label>Inputs <span class="hint">(Máx. 60 caracteres)</span></label>
+                    <div class="input-with-numbers"><div id="gutter-i" class="line-numbers"></div><div class="text-input-container"><textarea id="in-i" class="input-textarea" rows="3"></textarea><div id="display-i" class="text-display"></div></div></div>
+                </div>
+                <div class="form-group">
+                    <label>Proceso <span class="hint">(Rol: Tarea)</span></label>
+                    <div class="input-with-numbers"><div id="gutter-p" class="line-numbers"></div><div class="text-input-container"><textarea id="in-p" class="input-textarea" rows="5"></textarea><div id="display-p" class="text-display"></div></div></div>
+                </div>
+                <div class="form-group">
+                    <label>Outputs <span class="hint">(Máx. 60 caracteres)</span></label>
+                    <div class="input-with-numbers"><div id="gutter-o" class="line-numbers"></div><div class="text-input-container"><textarea id="in-o" class="input-textarea" rows="3"></textarea><div id="display-o" class="text-display"></div></div></div>
+                </div>
+                <div class="form-group">
+                    <label>Clientes <span class="hint">(Máx. 60 caracteres)</span></label>
+                    <div class="input-with-numbers"><div id="gutter-c" class="line-numbers"></div><div class="text-input-container"><textarea id="in-c" class="input-textarea" rows="3"></textarea><div id="display-c" class="text-display"></div></div></div>
+                </div>
+                <button class="btn-primary" onclick="generarDiagramaSIPOC()">GENERAR DIAGRAMA</button>
+            </div>
+        </div>
+
+        <div id="diagram-view">
+            <div class="toolbar" data-html2canvas-ignore="true">
+                <button class="btn-export btn-back" onclick="volverFormulario()">Volver al editor</button>
+                <button class="btn-export" onclick="descargarPNG()">Descargar PNG</button>
+                <button class="btn-export btn-pdf" onclick="descargarPDF()">Descargar PDF</button>
+            </div>
+            <div id="sipoc-canvas">
+                <div class="header">
+                    <div class="header-title">SIPOC<span>.</span></div>
+                    <div class="header-subtitle">Resumen visual de proveedores, entradas, proceso, salidas y clientes.</div>
+                    <div id="out-titulo"></div>
+                </div>
+                <div class="sipoc-grid">
+                    <div class="col col-dark"><div class="circle-dark">S</div><div class="col-title">Proveedores</div><div id="out-s" style="width: 100%;"></div></div>
+                    <div class="col col-light"><div class="circle-dark">I</div><div class="col-title">Inputs</div><div id="out-i" style="width: 100%;"></div></div>
+                    <div class="col col-dark" id="col-proceso"><div class="circle-dark">P</div><div class="col-title">Proceso</div><div id="out-p" style="width: 100%;"></div></div>
+                    <div class="col col-light"><div class="circle-dark">O</div><div class="col-title">Outputs</div><div id="out-o" style="width: 100%;"></div></div>
+                    <div class="col col-dark"><div class="circle-dark">C</div><div class="col-title">Clientes</div><div id="out-c" style="width: 100%;"></div></div>
+                </div>
+            </div>
+        </div>
     </div>
-    
-    <div id="statusMessage" class="status"></div>
 
-    <label for="scriptViewer" style="display: block; margin-top: 20px; font-weight: bold; color: #555;">2. Script Generado (Visualizar Script):</label>
-    <textarea id="scriptViewer" rows="15" readonly placeholder="El código XML del diagrama aparecerá aquí..."></textarea>
-    
-    <div class="button-group">
-        <button id="btnDescargar" onclick="descargarArchivo()">Descargar Archivo .bpmn</button>
+    <div id="tab-bpmn" class="tab-content">
+        <div class="bpmn-container">
+            <h1>Asistente BPMN 2.0</h1>
+            <div class="header-prompt">
+                <label for="prompt">1. Describe el proceso:</label>
+                <button id="btnDictar" onclick="toggleDictado()">🎤 Dictar</button>
+            </div>
+            <textarea id="prompt" rows="5" placeholder="Ejemplo: El proceso inicia cuando el cliente se acerca a la agencia..."></textarea>
+            <div class="button-group">
+                <button id="btnGenerarBPMN" class="bpmn-btn" onclick="generarBPMN()">
+                    <div id="loadingSpinner" class="spinner"></div>
+                    <span id="btnText">Generar XML BPMN</span>
+                </button>
+            </div>
+            <div id="statusMessage" class="status"></div>
+            <label for="scriptViewer" style="display: block; margin-top: 20px;">2. Script Generado:</label>
+            <textarea id="scriptViewer" rows="12" readonly placeholder="El código XML aparecerá aquí..."></textarea>
+            <div class="button-group">
+                <button id="btnDescargarBPMN" class="bpmn-btn" onclick="descargarBPMN()">Descargar .bpmn</button>
+            </div>
+        </div>
     </div>
-</div>
 
-<script>
-    // --- GESTIÓN DE LA API KEY (Seguro y local) ---
-    let API_KEY = localStorage.getItem('gemini_key');
+    <script>
+        // === LÓGICA DE NAVEGACIÓN ===
+        function handleRouting() {
+            let hash = window.location.hash.replace('#', '') || 'sipoc';
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
 
-    // Pedir la clave solo si no existe
-    if (!API_KEY) {
-        pedirClave();
-    }
-
-    function pedirClave() {
-        let clave = prompt("Para usar el generador, ingresa tu API Key de Google Gemini:");
-        if (clave && clave.trim() !== "") {
-            API_KEY = clave.trim();
-            localStorage.setItem('gemini_key', API_KEY);
-        } else {
-            alert("⚠️ Sin API Key, la IA no podrá generar los flujos.");
-        }
-    }
-
-    function cambiarClave() {
-        let nuevaClave = prompt("Ingresa la nueva API Key:", API_KEY || "");
-        if (nuevaClave && nuevaClave.trim() !== "") {
-            API_KEY = nuevaClave.trim();
-            localStorage.setItem('gemini_key', API_KEY);
-            mostrarMensaje("API Key actualizada correctamente.", "success");
-        }
-    }
-
-    // --- CONFIGURACIÓN DE VOZ ---
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    let recognition;
-    let isRecording = false;
-
-    if (SpeechRecognition) {
-        recognition = new SpeechRecognition();
-        recognition.continuous = true;
-        recognition.lang = 'es-ES';
-        recognition.interimResults = false;
-        recognition.onresult = function(event) {
-            const transcript = event.results[event.results.length - 1][0].transcript;
-            const textarea = document.getElementById('prompt');
-            textarea.value += (textarea.value.length > 0 ? ' ' : '') + transcript.trim() + '. ';
-        };
-        recognition.onerror = function(event) {
-            detenerDictado();
-            mostrarMensaje("Error con el micrófono: " + event.error, "error");
-        };
-    }
-
-    function toggleDictado() {
-        if (!recognition) return alert("Navegador no soporta dictado. Usa Chrome.");
-        isRecording ? detenerDictado() : iniciarDictado();
-    }
-    function iniciarDictado() { recognition.start(); isRecording = true; document.getElementById('btnDictar').innerText = "🔴 Escuchando..."; document.getElementById('btnDictar').classList.add('grabando'); }
-    function detenerDictado() { recognition.stop(); isRecording = false; document.getElementById('btnDictar').innerText = "🎤 Iniciar Dictado"; document.getElementById('btnDictar').classList.remove('grabando'); }
-
-    // --- FUNCIÓN PARA MOSTRAR MENSAJES EN PANTALLA ---
-    function mostrarMensaje(texto, tipo) {
-        const statusBox = document.getElementById('statusMessage');
-        statusBox.innerText = texto;
-        statusBox.className = `status ${tipo}`;
-    }
-
-    // --- LÓGICA DE GENERACIÓN ---
-    async function generarBPMN() {
-        const promptInput = document.getElementById('prompt');
-        const promptText = promptInput.value;
-        const btnGenerar = document.getElementById('btnGenerar');
-        const spinner = document.getElementById('loadingSpinner');
-        const btnText = document.getElementById('btnText');
-        const scriptViewer = document.getElementById('scriptViewer');
-        const btnDescargar = document.getElementById('btnDescargar');
-        const statusBox = document.getElementById('statusMessage');
-
-        // Validaciones iniciales
-        if (!promptText.trim()) {
-            return mostrarMensaje("Por favor, ingresa una descripción del proceso antes de generar.", "error");
-        }
-        if (!API_KEY) {
-            pedirClave();
-            return;
-        }
-
-        if (isRecording) detenerDictado();
-
-        // 1. ACTIVAR ESTADO DE CARGA ("PENSANDO")
-        btnGenerar.disabled = true;
-        promptInput.disabled = true; 
-        spinner.style.display = "inline-block"; 
-        btnText.innerText = " La IA está diseñando..."; 
-        statusBox.style.display = "none"; 
-        scriptViewer.value = "";
-        btnDescargar.style.display = 'none';
-
-        const URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
-        const instrucciones = `Eres un experto técnico en modelado de procesos y el estándar BPMN 2.0. 
-        Convierte la siguiente descripción en código XML estricto bajo BPMN 2.0.
-        
-        REGLAS CRÍTICAS (DEBES CUMPLIRLAS PARA EVITAR ERRORES DE IMPORTACIÓN):
-        1. El XML DEBE contener la sección semántica (<bpmn:process>) Y la sección visual obligatoria (<bpmndi:BPMNDiagram>).
-        2. TODOS los elementos (tareas, eventos, compuertas) deben tener su correspondiente etiqueta <bpmndi:BPMNShape> dentro de <bpmndi:BPMNPlane>.
-        3. TODAS las secuencias deben tener su <bpmndi:BPMNEdge>.
-        4. Inventa coordenadas (x, y, width, height) para las etiquetas <dc:Bounds>. No importa si se superponen, pero DEBEN existir.
-        5. Asegúrate de que cada 'bpmnElement' en la sección gráfica coincida exactamente con el 'id' del elemento en el proceso.
-        6. Devuelve ÚNICAMENTE código XML crudo. Sin markdown, sin explicaciones.
-        7. Debes identificar entidades y separarlas sus tareas en carriles (lanes).
-        
-        Para la sección visual <bpmndi:BPMNDiagram>:
-        1. Crea un <bpmndi:BPMNShape> para cada elemento.
-        2. Usa una cuadrícula simple: para el primer elemento x=150, y=100. Para los siguientes, suma 200 a la 'x' (150, 350, 550...) manteniendo la 'y' en 100.
-        3. Esto evitará que Bizagi amontone todo en el punto (0,0) y te dé el error de instancia.
-        
-        Proceso a modelar: ${promptText}`;
-
-        try {
-            // 2. ENVIAR PETICIÓN A GOOGLE
-            const response = await fetch(URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ contents: [{ parts: [{ text: instrucciones }] }] })
-            });
-
-            // 3. MANEJO DE ERRORES
-            if (!response.ok) {
-                if (response.status === 403 || response.status === 401) {
-                    throw new Error("Permiso denegado: Tu API Key es inválida o expiró. Haz clic en 'Cambiar API Key'.");
-                } else if (response.status === 400) {
-                    throw new Error("Solicitud incorrecta: Revisa el texto que ingresaste.");
-                } else if (response.status === 404) {
-                    throw new Error("Error 404: No se encontró el modelo. Verifica la URL de la API.");
+            if (hash === 'bpmn') {
+                document.getElementById('tab-bpmn').classList.add('active');
+                document.getElementById('btn-tab-bpmn').classList.add('active');
+            } 
+            else if (hash === 'sipoc' || hash === 'sipoc-diagram') {
+                document.getElementById('tab-sipoc').classList.add('active');
+                document.getElementById('btn-tab-sipoc').classList.add('active');
+                
+                if (hash === 'sipoc-diagram') {
+                    document.getElementById('form-view').style.display = 'none';
+                    document.getElementById('diagram-view').style.display = 'flex';
                 } else {
-                    throw new Error(`Fallo de comunicación con la IA (Error ${response.status}).`);
+                    document.getElementById('diagram-view').style.display = 'none';
+                    document.getElementById('form-view').style.display = 'flex';
                 }
             }
-
-            const data = await response.json();
-            let scriptGenerado = data.candidates[0].content.parts[0].text;
-            scriptGenerado = scriptGenerado.replace(/```xml/gi, '').replace(/```/g, '').trim();
-
-            // 4. ESTADO DE ÉXITO
-            scriptViewer.value = scriptGenerado;
-            btnDescargar.style.display = 'block';
-            mostrarMensaje("¡Diagrama generado con éxito! Puedes visualizarlo o descargarlo.", "success");
-            
-        } catch (error) {
-            // 5. ESTADO DE ERROR CAPTURADO
-            console.error(error);
-            if (error.message.includes("Failed to fetch")) {
-                mostrarMensaje("Error de red: Comprueba tu conexión a internet o la API Key.", "error");
-            } else {
-                mostrarMensaje(error.message, "error");
-            }
-        } finally {
-            // 6. RESTAURAR LA INTERFAZ
-            btnGenerar.disabled = false;
-            promptInput.disabled = false;
-            spinner.style.display = "none";
-            btnText.innerText = "Generar Script BPMN";
         }
-    }
+        window.addEventListener('hashchange', handleRouting);
+        function switchTab(tabId) { window.location.hash = tabId; }
 
-    function descargarArchivo() {
-        const contenido = document.getElementById('scriptViewer').value;
-        if (!contenido) return;
-        const blob = new Blob([contenido], { type: 'text/xml' });
-        const enlace = document.createElement('a');
-        enlace.href = URL.createObjectURL(blob);
-        enlace.download = 'proceso_generado.bpmn';
-        document.body.appendChild(enlace);
-        enlace.click();
-        document.body.removeChild(enlace);
-    }
-</script>
+        // === LÓGICA BPMN (API KEY Y GEMINI) ===
+        let API_KEY = localStorage.getItem('gemini_key');
+        function pedirClave() {
+            let clave = prompt("Ingresa tu API Key de Gemini para usar el Generador BPMN:");
+            if (clave && clave.trim() !== "") { API_KEY = clave.trim(); localStorage.setItem('gemini_key', API_KEY); }
+        }
+        function cambiarClave() {
+            let nueva = prompt("Nueva API Key:", API_KEY || "");
+            if (nueva && nueva.trim() !== "") { API_KEY = nueva.trim(); localStorage.setItem('gemini_key', API_KEY); alert("API Key guardada."); }
+        }
 
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition, isRecording = false;
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.continuous = true; recognition.lang = 'es-ES';
+            recognition.onresult = event => { document.getElementById('prompt').value += event.results[event.results.length - 1][0].transcript.trim() + '. '; };
+        }
+        function toggleDictado() {
+            if (!recognition) return alert("Usa Chrome para el dictado.");
+            if (isRecording) { recognition.stop(); document.getElementById('btnDictar').innerText = "🎤 Dictar"; }
+            else { recognition.start(); document.getElementById('btnDictar').innerText = "🔴 Escuchando..."; }
+            isRecording = !isRecording;
+        }
+
+        async function generarBPMN() {
+            const promptText = document.getElementById('prompt').value;
+            if (!promptText.trim()) return alert("Describe un proceso.");
+            if (!API_KEY) return pedirClave();
+
+            document.getElementById('btnGenerarBPMN').disabled = true;
+            document.getElementById('loadingSpinner').style.display = "inline-block";
+            document.getElementById('btnText').innerText = " Pensando...";
+
+            const URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
+            const inst = `Experto BPMN 2.0. Genera XML con <bpmndi:BPMNDiagram>. Coordenadas X suma 200, Y fija en 100. Proceso: ${promptText}`;
+
+            try {
+                const res = await fetch(URL, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({contents:[{parts:[{text:inst}]}]})});
+                if (!res.ok) throw new Error("Error de API: " + res.status);
+                const data = await res.json();
+                let xml = data.candidates[0].content.parts[0].text.replace(/```xml/gi, '').replace(/```/g, '').trim();
+                document.getElementById('scriptViewer').value = xml;
+                document.getElementById('btnDescargarBPMN').style.display = 'block';
+            } catch (err) { alert(err.message); } 
+            finally {
+                document.getElementById('btnGenerarBPMN').disabled = false;
+                document.getElementById('loadingSpinner').style.display = "none";
+                document.getElementById('btnText').innerText = "Generar XML BPMN";
+            }
+        }
+
+        function descargarBPMN() {
+            const blob = new Blob([document.getElementById('scriptViewer').value], { type: 'text/xml' });
+            const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = 'proceso.bpmn'; link.click();
+        }
+
+        // === LÓGICA SIPOC ===
+        const MAX_CHARS = 60;
+        function initSmartForm() {
+            ['s', 'i', 'p', 'o', 'c'].forEach(id => {
+                const txt = document.getElementById('in-'+id), disp = document.getElementById('display-'+id), gut = document.getElementById('gutter-'+id);
+                const update = () => {
+                    const lines = txt.value.split('\n');
+                    gut.innerHTML = lines.map((_, i) => `<div class="line-number">${i+1}</div>`).join('');
+                    disp.innerHTML = lines.map(l => l.trim().length > MAX_CHARS ? `<span class="over-limit">${l}</span>` : l).join('\n');
+                };
+                txt.addEventListener('input', update); txt.addEventListener('scroll', () => { gut.scrollTop = txt.scrollTop; disp.scrollTop = txt.scrollTop; });
+                update();
+            });
+        }
+
+        function textoACards(texto, clase) {
+            return texto.split('\n').filter(l => l.trim().length > 0).map((l, i) => `<div class="card ${clase}">${i+1}. ${l}</div>`).join('');
+        }
+
+        function generarDiagramaSIPOC() {
+            document.getElementById('out-titulo').innerText = document.getElementById('in-titulo').value || 'SIPOC';
+            document.getElementById('out-s').innerHTML = textoACards(document.getElementById('in-s').value, 'card-lightpill');
+            document.getElementById('out-i').innerHTML = textoACards(document.getElementById('in-i').value, 'card-darkpill');
+            document.getElementById('out-o').innerHTML = textoACards(document.getElementById('in-o').value, 'card-darkpill');
+            document.getElementById('out-c').innerHTML = textoACards(document.getElementById('in-c').value, 'card-lightpill');
+
+            let pLines = document.getElementById('in-p').value.split('\n').filter(l => l.trim().length > 0);
+            let pCol = document.getElementById('col-proceso');
+            
+            pCol.style.flex = "1";
+            let pHtml = '<div class="card card-white" style="border-radius:4px;">Inicio</div>';
+            
+            // CORRECCIÓN: Usamos solo la clase arrow (limpio, sin estilos en línea)
+            pLines.forEach((l, i) => pHtml += `<div class="arrow">↓</div><div class="card card-white" style="border-radius:4px;">${i+1}. ${l}</div>`);
+            pHtml += '<div class="arrow">↓</div><div class="card card-white" style="border-radius:4px;">Fin</div>';
+            
+            document.getElementById('out-p').innerHTML = pHtml;
+
+            window.location.hash = 'sipoc-diagram'; 
+        }
+
+        function volverFormulario() { window.location.hash = 'sipoc'; }
+
+        function descargarPNG() { html2canvas(document.getElementById('sipoc-canvas'), {scale: 2}).then(canvas => { let link = document.createElement('a'); link.download = 'SIPOC.png'; link.href = canvas.toDataURL(); link.click(); }); }
+        
+        // CORRECCIÓN: Función descargarPDF ajustada para forzar 1 sola página
+        function descargarPDF() { 
+            const canvasElement = document.getElementById('sipoc-canvas');
+            const opciones = {
+                margin: 0, 
+                filename: 'SIPOC.pdf', 
+                html2canvas: { scale: 2 }, 
+                jsPDF: { 
+                    unit: 'px', 
+                    format: [canvasElement.scrollWidth, canvasElement.scrollHeight + 5], // +5px evita desbordes ocultos
+                    orientation: 'landscape' 
+                },
+                pagebreak: { mode: 'avoid-all' } // Evita cortes de página a la fuerza
+            };
+            html2pdf().set(opciones).from(canvasElement).save(); 
+        }
+
+        window.onload = function() {
+            initSmartForm();
+            handleRouting(); 
+            if (!API_KEY) pedirClave(); 
+        };
+    </script>
 </body>
 </html>
