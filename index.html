@@ -303,44 +303,50 @@
         }
 
         // === GENERADOR BPMN CORREGIDO (FILTRO ESTRICTO) ===
-        async function generarBPMN() {
-            const promptText = document.getElementById('prompt').value;
-            if (!promptText.trim()) return alert("Describe un proceso.");
-            if (!API_KEY) return pedirClave();
+        const URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`;
+        
+        // Ajustamos las instrucciones para que sea infalible
+        const instrucciones = `Eres un experto técnico en BPMN 2.0. 
+        Convierte la descripción en código XML BPMN 2.0 estricto.
+        INSTRUCCIONES TÉCNICAS:
+        1. Incluye <bpmn:process> y <bpmndi:BPMNDiagram>.
+        2. Cada elemento debe tener su <bpmndi:BPMNShape> con <dc:Bounds>.
+        3. No uses markdown (sin \`\`\`xml). Devuelve SOLO el código.
+        4. IMPORTANTE: Usa 'x' incremental (+200) para que Bizagi no dé error de instancia.
+        Proceso: ${promptText}`;
 
-            document.getElementById('btnGenerarBPMN').disabled = true;
-            document.getElementById('loadingSpinner').style.display = "inline-block";
-            document.getElementById('btnText').innerText = " Pensando...";
+        try {
+            const response = await fetch(URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ contents: [{ parts: [{ text: instrucciones }] }] })
+            });
 
-            const URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
-            const inst = `Eres un conversor de texto a BPMN. Tu ÚNICA salida debe ser código XML válido (incluyendo <bpmndi:BPMNDiagram>). ESTRICTAMENTE PROHIBIDO incluir saludos, explicaciones, confirmaciones o formato markdown. Devuelve SOLO el XML crudo. Coordenadas X suma 200, Y fija en 100. Proceso: ${promptText}`;
-
-            try {
-                const res = await fetch(URL, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({contents:[{parts:[{text:inst}]}]})});
-                if (!res.ok) throw new Error("Error de API: " + res.status);
-                const data = await res.json();
-                
-                let rawText = data.candidates[0].content.parts[0].text;
-                
-                // Filtro para extraer solo el XML
-                let startIndex = rawText.indexOf('<');
-                let endIndex = rawText.lastIndexOf('>');
-                
-                let xml = "";
-                if (startIndex !== -1 && endIndex !== -1) {
-                    xml = rawText.substring(startIndex, endIndex + 1);
-                } else {
-                    xml = rawText.replace(/```xml/gi, '').replace(/```/g, '').trim(); 
-                }
-
-                document.getElementById('scriptViewer').value = xml;
-                document.getElementById('btnDescargarBPMN').style.display = 'block';
-            } catch (err) { alert(err.message); } 
-            finally {
-                document.getElementById('btnGenerarBPMN').disabled = false;
-                document.getElementById('loadingSpinner').style.display = "none";
-                document.getElementById('btnText').innerText = "Generar XML BPMN";
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(`Error ${response.status}: ${errorData.error?.message || 'Fallo de API'}`);
             }
+
+            const data = await response.json();
+            let scriptGenerado = data.candidates[0].content.parts[0].text;
+
+            // EXTRACCIÓN ROBUSTA: Solo lo que está entre etiquetas XML
+            const xmlMatch = scriptGenerado.match(/<[\s\S]*>/);
+            if (xmlMatch) {
+                scriptGenerado = xmlMatch[0].trim();
+            } else {
+                // Fallback si no hay etiquetas (limpieza manual)
+                scriptGenerado = scriptGenerado.replace(/```xml/gi, '').replace(/```/g, '').trim();
+            }
+
+            // Asignación a los elementos del DOM
+            scriptViewer.value = scriptGenerado;
+            btnDescargar.style.display = 'block';
+            mostrarMensaje("¡Diagrama generado con éxito!", "success");
+            
+        } catch (err) {
+            console.error(err);
+            mostrarMensaje(err.message, "danger");
         }
 
         function descargarBPMN() {
