@@ -24,8 +24,6 @@
         
         /* BARRA DE NAVEGACIÓN */
         .navbar { background-color: var(--shalom-red); padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        
-        /* Tipografía actualizada para el título */
         .navbar-title { font-family: 'Montserrat', sans-serif; font-size: 24px; font-weight: 900; font-style: italic; letter-spacing: 1px; } 
         
         .tabs { display: flex; gap: 15px; }
@@ -42,6 +40,17 @@
         /* TÍTULOS GENERALES */
         h1, .form-title { color: var(--shalom-dark); text-align: center; font-size: 28px; font-weight: bold; margin-bottom: 30px; }
         label { font-weight: bold; color: var(--shalom-dark); margin: 0; }
+
+        /* ==========================================
+           PANTALLA DE INICIO (NUEVO)
+           ========================================== */
+        .home-wrapper { display: flex; justify-content: center; align-items: center; min-height: 75vh; }
+        .home-cards { display: flex; gap: 40px; max-width: 900px; width: 100%; padding: 20px; flex-wrap: wrap; }
+        .home-card { flex: 1; min-width: 300px; background: white; border-radius: 12px; padding: 50px 30px; text-align: center; cursor: pointer; box-shadow: 0 10px 25px rgba(0,0,0,0.05); transition: all 0.3s ease; border-top: 6px solid var(--shalom-red); display: flex; flex-direction: column; align-items: center; gap: 20px; }
+        .home-card:hover { transform: translateY(-8px); box-shadow: 0 15px 35px rgba(0,0,0,0.1); border-top: 6px solid var(--shalom-dark); }
+        .home-card h2 { color: var(--shalom-dark); margin: 0; font-size: 24px; font-weight: bold; }
+        .home-card p { color: #666; font-size: 15px; line-height: 1.6; margin: 0; }
+        .home-icon { font-size: 60px; }
 
         /* ==========================================
            MÓDULO BPMN
@@ -124,7 +133,6 @@
         .card-darkpill { background-color: var(--shalom-dark); color: white; border: none; }
         .card-white { background-color: white; color: var(--shalom-dark); border-left: 4px solid var(--shalom-dark); box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         
-        /* CORRECCIÓN: FLECHAS CENTRADAS */
         .arrow { font-size: 20px; font-weight: bold; margin-bottom: 5px; text-align: center; display: block; width: 100%; }
         .col-dark .arrow { color: white; }
         .col-light .arrow { color: var(--shalom-red); }
@@ -137,13 +145,31 @@
     <div class="navbar">
         <div class="navbar-title">PORTAL DE PROCESOS</div>
         <div class="tabs">
-            <button id="btn-tab-sipoc" class="tab-btn active" onclick="switchTab('sipoc')">Diagramas SIPOC</button>
+            <button id="btn-tab-home" class="tab-btn active" onclick="switchTab('home')">🏠 Inicio</button>
+            <button id="btn-tab-sipoc" class="tab-btn" onclick="switchTab('sipoc')">Diagramas SIPOC</button>
             <button id="btn-tab-bpmn" class="tab-btn" onclick="switchTab('bpmn')">Flujos BPMN</button>
             <button class="btn-key" onclick="cambiarClave()">🔑 API Key</button>
         </div>
     </div>
 
-    <div id="tab-sipoc" class="tab-content active">
+    <div id="tab-home" class="tab-content active">
+        <div class="home-wrapper">
+            <div class="home-cards">
+                <div class="home-card" onclick="switchTab('sipoc')">
+                    <div class="home-icon">📊</div>
+                    <h2>Generador SIPOC</h2>
+                    <p>Estructura tus procesos de forma visual. Define proveedores, entradas, tareas, salidas y clientes, y expórtalo a PDF o PNG listo para presentaciones.</p>
+                </div>
+                <div class="home-card" onclick="switchTab('bpmn')">
+                    <div class="home-icon">🤖</div>
+                    <h2>Flujos BPMN con IA</h2>
+                    <p>Dicta o escribe la descripción de tu proceso y deja que la Inteligencia Artificial genere el código XML estructurado en formato BPMN 2.0.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="tab-sipoc" class="tab-content">
         <div id="form-view">
             <div class="form-container">
                 <h1 class="form-title">Generador SIPOC</h1>
@@ -219,13 +245,19 @@
     </div>
 
     <script>
-        // === LÓGICA DE NAVEGACIÓN ===
+        // === LÓGICA DE NAVEGACIÓN MODIFICADA ===
         function handleRouting() {
-            let hash = window.location.hash.replace('#', '') || 'sipoc';
+            // Ahora la ruta por defecto es 'home' si no hay hash
+            let hash = window.location.hash.replace('#', '') || 'home'; 
+            
             document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
 
-            if (hash === 'bpmn') {
+            if (hash === 'home') {
+                document.getElementById('tab-home').classList.add('active');
+                if(document.getElementById('btn-tab-home')) document.getElementById('btn-tab-home').classList.add('active');
+            }
+            else if (hash === 'bpmn') {
                 document.getElementById('tab-bpmn').classList.add('active');
                 document.getElementById('btn-tab-bpmn').classList.add('active');
             } 
@@ -270,6 +302,7 @@
             isRecording = !isRecording;
         }
 
+        // === GENERADOR BPMN CORREGIDO (FILTRO ESTRICTO) ===
         async function generarBPMN() {
             const promptText = document.getElementById('prompt').value;
             if (!promptText.trim()) return alert("Describe un proceso.");
@@ -280,13 +313,26 @@
             document.getElementById('btnText').innerText = " Pensando...";
 
             const URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
-            const inst = `Experto BPMN 2.0. Genera XML con <bpmndi:BPMNDiagram>. Coordenadas X suma 200, Y fija en 100. Proceso: ${promptText}`;
+            const inst = `Eres un conversor de texto a BPMN. Tu ÚNICA salida debe ser código XML válido (incluyendo <bpmndi:BPMNDiagram>). ESTRICTAMENTE PROHIBIDO incluir saludos, explicaciones, confirmaciones o formato markdown. Devuelve SOLO el XML crudo. Coordenadas X suma 200, Y fija en 100. Proceso: ${promptText}`;
 
             try {
                 const res = await fetch(URL, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({contents:[{parts:[{text:inst}]}]})});
                 if (!res.ok) throw new Error("Error de API: " + res.status);
                 const data = await res.json();
-                let xml = data.candidates[0].content.parts[0].text.replace(/```xml/gi, '').replace(/```/g, '').trim();
+                
+                let rawText = data.candidates[0].content.parts[0].text;
+                
+                // Filtro para extraer solo el XML
+                let startIndex = rawText.indexOf('<');
+                let endIndex = rawText.lastIndexOf('>');
+                
+                let xml = "";
+                if (startIndex !== -1 && endIndex !== -1) {
+                    xml = rawText.substring(startIndex, endIndex + 1);
+                } else {
+                    xml = rawText.replace(/```xml/gi, '').replace(/```/g, '').trim(); 
+                }
+
                 document.getElementById('scriptViewer').value = xml;
                 document.getElementById('btnDescargarBPMN').style.display = 'block';
             } catch (err) { alert(err.message); } 
@@ -334,7 +380,6 @@
             pCol.style.flex = "1";
             let pHtml = '<div class="card card-white" style="border-radius:4px;">Inicio</div>';
             
-            // CORRECCIÓN: Usamos solo la clase arrow (limpio, sin estilos en línea)
             pLines.forEach((l, i) => pHtml += `<div class="arrow">↓</div><div class="card card-white" style="border-radius:4px;">${i+1}. ${l}</div>`);
             pHtml += '<div class="arrow">↓</div><div class="card card-white" style="border-radius:4px;">Fin</div>';
             
@@ -347,7 +392,6 @@
 
         function descargarPNG() { html2canvas(document.getElementById('sipoc-canvas'), {scale: 2}).then(canvas => { let link = document.createElement('a'); link.download = 'SIPOC.png'; link.href = canvas.toDataURL(); link.click(); }); }
         
-        // CORRECCIÓN: Función descargarPDF ajustada para forzar 1 sola página
         function descargarPDF() { 
             const canvasElement = document.getElementById('sipoc-canvas');
             const opciones = {
@@ -356,10 +400,10 @@
                 html2canvas: { scale: 2 }, 
                 jsPDF: { 
                     unit: 'px', 
-                    format: [canvasElement.scrollWidth, canvasElement.scrollHeight + 5], // +5px evita desbordes ocultos
+                    format: [canvasElement.scrollWidth, canvasElement.scrollHeight + 5], 
                     orientation: 'landscape' 
                 },
-                pagebreak: { mode: 'avoid-all' } // Evita cortes de página a la fuerza
+                pagebreak: { mode: 'avoid-all' }
             };
             html2pdf().set(opciones).from(canvasElement).save(); 
         }
