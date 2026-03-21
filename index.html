@@ -367,7 +367,7 @@
             return texto.split('\n').filter(l => l.trim().length > 0).map((l, i) => `<div class="card ${clase}">${i+1}. ${l}</div>`).join('');
         }
 
-        function generarDiagramaSIPOC() {
+            function generarDiagramaSIPOC() {
             document.getElementById('out-titulo').innerText = document.getElementById('in-titulo').value || 'SIPOC';
             document.getElementById('out-s').innerHTML = textoACards(document.getElementById('in-s').value, 'card-lightpill');
             document.getElementById('out-i').innerHTML = textoACards(document.getElementById('in-i').value, 'card-darkpill');
@@ -377,13 +377,91 @@
             let pLines = document.getElementById('in-p').value.split('\n').filter(l => l.trim().length > 0);
             let pCol = document.getElementById('col-proceso');
             
-            pCol.style.flex = "1";
-            let pHtml = '<div class="card card-white" style="border-radius:4px;">Inicio</div>';
-            
-            pLines.forEach((l, i) => pHtml += `<div class="arrow">↓</div><div class="card card-white" style="border-radius:4px;">${i+1}. ${l}</div>`);
-            pHtml += '<div class="arrow">↓</div><div class="card card-white" style="border-radius:4px;">Fin</div>';
-            
-            document.getElementById('out-p').innerHTML = pHtml;
+            let roles = [];
+            let parsedLines = [];
+
+            // 1. Extraer los roles únicos
+            pLines.forEach(l => {
+                let role = "General"; 
+                let task = l;
+                if (l.includes(':')) {
+                    let parts = l.split(':');
+                    role = parts[0].trim();
+                    task = parts.slice(1).join(':').trim();
+                }
+                if (!roles.includes(role)) roles.push(role);
+                parsedLines.push({ role, task });
+            });
+
+            let pHtml = '';
+
+            // Si hay un solo rol (sin carriles)
+            if (roles.length <= 1) {
+                pCol.style.flex = "1";
+                pHtml = '<div class="card card-white" style="border-radius:4px;">Inicio</div>';
+                parsedLines.forEach((item, i) => {
+                    pHtml += `<div class="arrow">↓</div><div class="card card-white" style="border-radius:4px;">${i+1}. ${item.task}</div>`;
+                });
+                pHtml += '<div class="arrow">↓</div><div class="card card-white" style="border-radius:4px;">Fin</div>';
+                document.getElementById('out-p').innerHTML = pHtml;
+            } 
+            // Si hay 2 o más roles (CARRILES ACTIVADOS)
+            else {
+                pCol.style.flex = roles.length; 
+                
+                // UN SOLO CONTENEDOR GRID para alinear las líneas perfectamente
+                pHtml = `<div style="display: grid; grid-template-columns: repeat(${roles.length}, 1fr); width: 100%; align-items: stretch; gap: 0;">`;
+
+                // FILA 1: Encabezados de áreas
+                for(let i=0; i<roles.length; i++) {
+                    let borderStyle = (i < roles.length - 1) ? `border-right: 1px dashed rgba(255,255,255,0.6);` : ``;
+                    pHtml += `<div style="${borderStyle} padding-bottom: 20px;">
+                                <div style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); padding: 10px; text-align: center; font-weight: bold; font-size: 13px; border-radius: 4px; text-transform: uppercase; color: white; margin: 0 5px;">👤 ${roles[i]}</div>
+                              </div>`;
+                }
+
+                // FILA 2: Cuadro de Inicio
+                let firstColIndex = roles.indexOf(parsedLines[0].role);
+                for(let i=0; i<roles.length; i++) {
+                    let borderStyle = (i < roles.length - 1) ? `border-right: 1px dashed rgba(255,255,255,0.6);` : ``;
+                    pHtml += `<div style="${borderStyle} padding: 5px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;">`;
+                    if (i === firstColIndex) {
+                         // Ancho en 95% igual que las tareas
+                         pHtml += `<div class="card card-white" style="border-radius:4px; width: 95%; margin: 0; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">Inicio</div>`;
+                    }
+                    pHtml += `</div>`;
+                }
+
+                // FILAS 3..N: Tareas del proceso
+                parsedLines.forEach((item, index) => {
+                    let colIndex = roles.indexOf(item.role);
+                    for(let i = 0; i < roles.length; i++) {
+                        let borderStyle = (i < roles.length - 1) ? `border-right: 1px dashed rgba(255,255,255,0.6);` : ``;
+                        pHtml += `<div style="${borderStyle} padding: 5px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;">`;
+                        if (i === colIndex) {
+                            pHtml += `<div class="arrow" style="margin-bottom: 5px; margin-top: 5px;">↓</div>`;
+                            pHtml += `<div class="card card-white" style="border-radius:4px; width: 95%; margin: 0; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">${index + 1}. ${item.task}</div>`;
+                        }
+                        pHtml += `</div>`;
+                    }
+                });
+
+                // FILA FINAL: Cuadro de Fin
+                let lastColIndex = roles.indexOf(parsedLines[parsedLines.length - 1].role);
+                for(let i=0; i<roles.length; i++) {
+                    let borderStyle = (i < roles.length - 1) ? `border-right: 1px dashed rgba(255,255,255,0.6);` : ``;
+                    pHtml += `<div style="${borderStyle} padding: 5px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;">`;
+                    if (i === lastColIndex) {
+                         pHtml += `<div class="arrow" style="margin-bottom: 5px; margin-top: 5px;">↓</div>`;
+                         // Ancho en 95% igual que las tareas
+                         pHtml += `<div class="card card-white" style="border-radius:4px; width: 95%; margin: 0; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">Fin</div>`;
+                    }
+                    pHtml += `</div>`;
+                }
+
+                pHtml += `</div>`; // Cierre del grid maestro
+                document.getElementById('out-p').innerHTML = pHtml;
+            }
 
             window.location.hash = 'sipoc-diagram'; 
         }
@@ -393,19 +471,39 @@
         function descargarPNG() { html2canvas(document.getElementById('sipoc-canvas'), {scale: 2}).then(canvas => { let link = document.createElement('a'); link.download = 'SIPOC.png'; link.href = canvas.toDataURL(); link.click(); }); }
         
         function descargarPDF() { 
-            const canvasElement = document.getElementById('sipoc-canvas');
+            const element = document.getElementById('sipoc-canvas');
+            
+            // Usamos offset en lugar de scroll para mayor precisión real
+            const w = element.offsetWidth;
+            const h = element.offsetHeight;
+
             const opciones = {
                 margin: 0, 
                 filename: 'SIPOC.pdf', 
-                html2canvas: { scale: 2 }, 
+                image: { type: 'jpeg', quality: 1 }, 
+                html2canvas: { 
+                    scale: 2,
+                    scrollY: 0, // Evita que un mínimo scroll mueva el lienzo
+                    scrollX: 0,
+                    width: w,
+                    height: h
+                }, 
                 jsPDF: { 
                     unit: 'px', 
-                    format: [canvasElement.scrollWidth, canvasElement.scrollHeight + 5], 
+                    format: [w, h], 
                     orientation: 'landscape' 
-                },
-                pagebreak: { mode: 'avoid-all' }
+                }
             };
-            html2pdf().set(opciones).from(canvasElement).save(); 
+
+            // Interceptamos la creación del PDF antes de guardar
+            html2pdf().set(opciones).from(element).toPdf().get('pdf').then(function(pdf) {
+                const totalPages = pdf.internal.getNumberOfPages();
+                
+                // Si la librería generó páginas fantasma (2 o más), las eliminamos
+                for (let i = totalPages; i > 1; i--) {
+                    pdf.deletePage(i);
+                }
+            }).save(); 
         }
 
         window.onload = function() {
