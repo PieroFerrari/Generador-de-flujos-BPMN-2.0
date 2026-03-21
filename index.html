@@ -6,7 +6,6 @@
     <title>Portal de Procesos - Herramientas IA</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,800;1,900&display=swap" rel="stylesheet">
     
     <style>
@@ -37,12 +36,11 @@
         .tab-content { display: none; padding: 30px 20px; }
         .tab-content.active { display: block; }
 
-        /* TÍTULOS GENERALES */
         h1, .form-title { color: var(--shalom-dark); text-align: center; font-size: 28px; font-weight: bold; margin-bottom: 30px; }
         label { font-weight: bold; color: var(--shalom-dark); margin: 0; }
 
         /* ==========================================
-           PANTALLA DE INICIO (NUEVO)
+           PANTALLA DE INICIO
            ========================================== */
         .home-wrapper { display: flex; justify-content: center; align-items: center; min-height: 75vh; }
         .home-cards { display: flex; gap: 40px; max-width: 900px; width: 100%; padding: 20px; flex-wrap: wrap; }
@@ -245,9 +243,8 @@
     </div>
 
     <script>
-        // === LÓGICA DE NAVEGACIÓN MODIFICADA ===
+        // === LÓGICA DE NAVEGACIÓN ===
         function handleRouting() {
-            // Ahora la ruta por defecto es 'home' si no hay hash
             let hash = window.location.hash.replace('#', '') || 'home'; 
             
             document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
@@ -302,51 +299,73 @@
             isRecording = !isRecording;
         }
 
-        // === GENERADOR BPMN CORREGIDO (FILTRO ESTRICTO) ===
-        const URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`;
-        
-        // Ajustamos las instrucciones para que sea infalible
-        const instrucciones = `Eres un experto técnico en BPMN 2.0. 
-        Convierte la descripción en código XML BPMN 2.0 estricto.
-        INSTRUCCIONES TÉCNICAS:
-        1. Incluye <bpmn:process> y <bpmndi:BPMNDiagram>.
-        2. Cada elemento debe tener su <bpmndi:BPMNShape> con <dc:Bounds>.
-        3. No uses markdown (sin \`\`\`xml). Devuelve SOLO el código.
-        4. IMPORTANTE: Usa 'x' incremental (+200) para que Bizagi no dé error de instancia.
-        Proceso: ${promptText}`;
+        // Función auxiliar para mostrar mensajes (FALTABA ESTO)
+        function mostrarMensaje(texto, tipo) {
+            const msj = document.getElementById('statusMessage');
+            msj.innerText = texto;
+            msj.style.display = 'block';
+            msj.style.color = tipo === "danger" ? "var(--shalom-red)" : "#28a745";
+        }
 
-        try {
-            const response = await fetch(URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ contents: [{ parts: [{ text: instrucciones }] }] })
-            });
+        // === GENERADOR BPMN CORREGIDO (ENVUELTO EN SU FUNCIÓN ASYNC) ===
+        async function generarBPMN() {
+            const promptText = document.getElementById('prompt').value;
+            if (!promptText.trim()) return alert("Describe un proceso.");
+            if (!API_KEY) return pedirClave();
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(`Error ${response.status}: ${errorData.error?.message || 'Fallo de API'}`);
-            }
+            document.getElementById('btnGenerarBPMN').disabled = true;
+            document.getElementById('loadingSpinner').style.display = "inline-block";
+            document.getElementById('btnText').innerText = " Pensando...";
 
-            const data = await response.json();
-            let scriptGenerado = data.candidates[0].content.parts[0].text;
-
-            // EXTRACCIÓN ROBUSTA: Solo lo que está entre etiquetas XML
-            const xmlMatch = scriptGenerado.match(/<[\s\S]*>/);
-            if (xmlMatch) {
-                scriptGenerado = xmlMatch[0].trim();
-            } else {
-                // Fallback si no hay etiquetas (limpieza manual)
-                scriptGenerado = scriptGenerado.replace(/```xml/gi, '').replace(/```/g, '').trim();
-            }
-
-            // Asignación a los elementos del DOM
-            scriptViewer.value = scriptGenerado;
-            btnDescargar.style.display = 'block';
-            mostrarMensaje("¡Diagrama generado con éxito!", "success");
+            const URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`;
             
-        } catch (err) {
-            console.error(err);
-            mostrarMensaje(err.message, "danger");
+            // Instrucciones infalibles
+            const instrucciones = `Eres un experto técnico en BPMN 2.0. 
+            Convierte la descripción en código XML BPMN 2.0 estricto.
+            INSTRUCCIONES TÉCNICAS:
+            1. Incluye <bpmn:process> y <bpmndi:BPMNDiagram>.
+            2. Cada elemento debe tener su <bpmndi:BPMNShape> con <dc:Bounds>.
+            3. No uses markdown (sin \`\`\`xml). Devuelve SOLO el código.
+            4. IMPORTANTE: Usa 'x' incremental (+200) para que Bizagi no dé error de instancia.
+            5. ESTRICTAMENTE PROHIBIDO dar cualquier tipo de comentario, explicación, idea o sugerencia. El texto que brindes debe ser Código XML BPMN 2.0 estricto.
+            6. Debes reconocer a los ejectores y ubicarlos en carriles según corresponda.
+            Proceso: ${promptText}`;
+
+            try {
+                const response = await fetch(URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: instrucciones }] }] })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`Error ${response.status}: ${errorData.error?.message || 'Fallo de API'}`);
+                }
+
+                const data = await response.json();
+                let scriptGenerado = data.candidates[0].content.parts[0].text;
+
+                // Extracción Robusta
+                const xmlMatch = scriptGenerado.match(/<[\s\S]*>/);
+                if (xmlMatch) {
+                    scriptGenerado = xmlMatch[0].trim();
+                } else {
+                    scriptGenerado = scriptGenerado.replace(/```xml/gi, '').replace(/```/g, '').trim();
+                }
+
+                document.getElementById('scriptViewer').value = scriptGenerado;
+                document.getElementById('btnDescargarBPMN').style.display = 'block';
+                mostrarMensaje("¡Diagrama generado con éxito!", "success");
+                
+            } catch (err) {
+                console.error(err);
+                mostrarMensaje(err.message, "danger");
+            } finally {
+                document.getElementById('btnGenerarBPMN').disabled = false;
+                document.getElementById('loadingSpinner').style.display = "none";
+                document.getElementById('btnText').innerText = "Generar XML BPMN";
+            }
         }
 
         function descargarBPMN() {
@@ -373,7 +392,7 @@
             return texto.split('\n').filter(l => l.trim().length > 0).map((l, i) => `<div class="card ${clase}">${i+1}. ${l}</div>`).join('');
         }
 
-            function generarDiagramaSIPOC() {
+        function generarDiagramaSIPOC() {
             document.getElementById('out-titulo').innerText = document.getElementById('in-titulo').value || 'SIPOC';
             document.getElementById('out-s').innerHTML = textoACards(document.getElementById('in-s').value, 'card-lightpill');
             document.getElementById('out-i').innerHTML = textoACards(document.getElementById('in-i').value, 'card-darkpill');
@@ -386,7 +405,6 @@
             let roles = [];
             let parsedLines = [];
 
-            // 1. Extraer los roles únicos
             pLines.forEach(l => {
                 let role = "General"; 
                 let task = l;
@@ -401,7 +419,6 @@
 
             let pHtml = '';
 
-            // Si hay un solo rol (sin carriles)
             if (roles.length <= 1) {
                 pCol.style.flex = "1";
                 pHtml = '<div class="card card-white" style="border-radius:4px;">Inicio</div>';
@@ -411,14 +428,10 @@
                 pHtml += '<div class="arrow">↓</div><div class="card card-white" style="border-radius:4px;">Fin</div>';
                 document.getElementById('out-p').innerHTML = pHtml;
             } 
-            // Si hay 2 o más roles (CARRILES ACTIVADOS)
             else {
                 pCol.style.flex = roles.length; 
-                
-                // UN SOLO CONTENEDOR GRID para alinear las líneas perfectamente
                 pHtml = `<div style="display: grid; grid-template-columns: repeat(${roles.length}, 1fr); width: 100%; align-items: stretch; gap: 0;">`;
 
-                // FILA 1: Encabezados de áreas
                 for(let i=0; i<roles.length; i++) {
                     let borderStyle = (i < roles.length - 1) ? `border-right: 1px dashed rgba(255,255,255,0.6);` : ``;
                     pHtml += `<div style="${borderStyle} padding-bottom: 20px;">
@@ -426,19 +439,16 @@
                               </div>`;
                 }
 
-                // FILA 2: Cuadro de Inicio
                 let firstColIndex = roles.indexOf(parsedLines[0].role);
                 for(let i=0; i<roles.length; i++) {
                     let borderStyle = (i < roles.length - 1) ? `border-right: 1px dashed rgba(255,255,255,0.6);` : ``;
                     pHtml += `<div style="${borderStyle} padding: 5px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;">`;
                     if (i === firstColIndex) {
-                         // Ancho en 95% igual que las tareas
                          pHtml += `<div class="card card-white" style="border-radius:4px; width: 95%; margin: 0; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">Inicio</div>`;
                     }
                     pHtml += `</div>`;
                 }
 
-                // FILAS 3..N: Tareas del proceso
                 parsedLines.forEach((item, index) => {
                     let colIndex = roles.indexOf(item.role);
                     for(let i = 0; i < roles.length; i++) {
@@ -452,20 +462,18 @@
                     }
                 });
 
-                // FILA FINAL: Cuadro de Fin
                 let lastColIndex = roles.indexOf(parsedLines[parsedLines.length - 1].role);
                 for(let i=0; i<roles.length; i++) {
                     let borderStyle = (i < roles.length - 1) ? `border-right: 1px dashed rgba(255,255,255,0.6);` : ``;
                     pHtml += `<div style="${borderStyle} padding: 5px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;">`;
                     if (i === lastColIndex) {
                          pHtml += `<div class="arrow" style="margin-bottom: 5px; margin-top: 5px;">↓</div>`;
-                         // Ancho en 95% igual que las tareas
                          pHtml += `<div class="card card-white" style="border-radius:4px; width: 95%; margin: 0; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">Fin</div>`;
                     }
                     pHtml += `</div>`;
                 }
 
-                pHtml += `</div>`; // Cierre del grid maestro
+                pHtml += `</div>`;
                 document.getElementById('out-p').innerHTML = pHtml;
             }
 
@@ -478,8 +486,6 @@
         
         function descargarPDF() { 
             const element = document.getElementById('sipoc-canvas');
-            
-            // Usamos offset en lugar de scroll para mayor precisión real
             const w = element.offsetWidth;
             const h = element.offsetHeight;
 
@@ -487,28 +493,13 @@
                 margin: 0, 
                 filename: 'SIPOC.pdf', 
                 image: { type: 'jpeg', quality: 1 }, 
-                html2canvas: { 
-                    scale: 2,
-                    scrollY: 0, // Evita que un mínimo scroll mueva el lienzo
-                    scrollX: 0,
-                    width: w,
-                    height: h
-                }, 
-                jsPDF: { 
-                    unit: 'px', 
-                    format: [w, h], 
-                    orientation: 'landscape' 
-                }
+                html2canvas: { scale: 2, scrollY: 0, scrollX: 0, width: w, height: h }, 
+                jsPDF: { unit: 'px', format: [w, h], orientation: 'landscape' }
             };
 
-            // Interceptamos la creación del PDF antes de guardar
             html2pdf().set(opciones).from(element).toPdf().get('pdf').then(function(pdf) {
                 const totalPages = pdf.internal.getNumberOfPages();
-                
-                // Si la librería generó páginas fantasma (2 o más), las eliminamos
-                for (let i = totalPages; i > 1; i--) {
-                    pdf.deletePage(i);
-                }
+                for (let i = totalPages; i > 1; i--) { pdf.deletePage(i); }
             }).save(); 
         }
 
