@@ -320,10 +320,10 @@
         1. El XML DEBE contener la sección semántica (<bpmn:process>) Y la sección visual obligatoria (<bpmndi:BPMNDiagram>).
         2. TODOS los elementos (tareas, eventos, compuertas) deben tener su correspondiente etiqueta <bpmndi:BPMNShape> dentro de <bpmndi:BPMNPlane>.
         3. TODAS las secuencias deben tener su <bpmndi:BPMNEdge>.
-        4. Inventa coordenadas (x, y, width, height) para las etiquetas <dc:Bounds>. No importa si se superponen, pero DEBEN existir.
-        5. Asegúrate de que cada 'bpmnElement' en la sección gráfica coincida exactamente con el 'id' del elemento en el proceso.
-        6. Devuelve ÚNICAMENTE código XML crudo. Sin markdown, sin explicaciones.
-        7. Debes identificar entidades y separarlas sus tareas en carriles.
+        4. Debes identificar entidades y separarlas sus tareas en carriles (SWIMLANES).
+        5. Inventa coordenadas (x, y, width, height) para las etiquetas <dc:Bounds>. No importa si se superponen, pero DEBEN existir.
+        6. Asegúrate de que cada 'bpmnElement' en la sección gráfica coincida exactamente con el 'id' del elemento en el proceso.
+        7. Devuelve ÚNICAMENTE código XML crudo. Sin markdown, sin explicaciones.
         Para la sección visual <bpmndi:BPMNDiagram>:
         1. Crea un <bpmndi:BPMNShape> para cada elemento.
         2. Usa una cuadrícula simple: para el primer elemento x=150, y=100. Para los siguientes, suma 200 a la 'x' (150, 350, 550...) manteniendo la 'y' en 100.
