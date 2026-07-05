@@ -582,11 +582,18 @@ ${promptText}`;
             }).save(); 
         }
 
-        window.onload = function() {
-            initSmartForm();
-            handleRouting(); 
-            if (!API_KEY) pedirClave() cargarModelosDisponibles();; 
-        };
+       window.onload = function() {
+    initSmartForm();
+    handleRouting(); 
+    
+    // Verificación correcta con if/else
+    if (!API_KEY) {
+        pedirClave(); 
+    } else {
+        cargarModelosDisponibles(); 
+    }
+};
+        
     </script>
 </body>
 </html>
