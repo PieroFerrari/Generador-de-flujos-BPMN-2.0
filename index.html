@@ -222,10 +222,24 @@
     <div id="tab-bpmn" class="tab-content">
         <div class="bpmn-container">
             <h1>Asistente BPMN 2.0</h1>
+            
+            <div class="header-prompt" style="background-color: var(--shalom-light); padding: 10px; border-radius: 4px; margin-bottom: 15px; border: 1px solid var(--shalom-border);">
+                <label for="modelSelector" style="font-size: 14px;">🧠 Modelo de Procesamiento:</label>
+                    <select id="modelSelector" style="padding: 5px; border-radius: 4px; border: 1px solid #ccc; flex-grow: 1; margin-left: 10px;">
+                        <option value="">Cargando modelos disponibles...</option>
+                    </select>
+            </div>
+
             <div class="header-prompt">
                 <label for="prompt">1. Describe el proceso:</label>
                 <button id="btnDictar" onclick="toggleDictado()">🎤 Dictar</button>
             </div>
+            
+            <div class="header-prompt">
+                <label for="prompt">1. Describe el proceso:</label>
+                <button id="btnDictar" onclick="toggleDictado()">🎤 Dictar</button>
+            </div>
+            
             <textarea id="prompt" rows="5" placeholder="Ejemplo: El proceso inicia cuando el cliente se acerca a la agencia..."></textarea>
             <div class="button-group">
                 <button id="btnGenerarBPMN" class="bpmn-btn" onclick="generarBPMN()">
@@ -243,6 +257,50 @@
     </div>
 
     <script>
+
+        async function cargarModelosDisponibles() {
+    const select = document.getElementById('modelSelector');
+    if (!API_KEY) {
+        select.innerHTML = '<option value="">Requiere API Key para cargar</option>';
+        return;
+    }
+
+    try {
+        // Hacemos la petición GET al directorio de modelos
+        const urlList = `https://generativelanguage.googleapis.com/v1beta/models?key=${API_KEY}`;
+        const respuesta = await fetch(urlList);
+        
+        if (!respuesta.ok) throw new Error("Fallo al autenticar la API Key");
+        
+        const data = await respuesta.json();
+        select.innerHTML = ''; // Limpiamos el texto de "Cargando..."
+
+        // Filtramos para quedarnos solo con los modelos de la familia Gemini que generan texto/código
+        const modelosUtiles = data.models.filter(m => 
+            m.supportedGenerationMethods.includes("generateContent") && 
+            m.name.includes("gemini")
+        );
+
+        // Llenamos el desplegable
+        modelosUtiles.forEach(modelo => {
+            const option = document.createElement('option');
+            // La API devuelve el nombre como "models/gemini-1.5-pro", le quitamos el "models/"
+            const idTecnico = modelo.name.replace('models/', ''); 
+            option.value = idTecnico;
+            // Mostramos el nombre comercial bonito y el ID técnico entre paréntesis
+            option.textContent = `${modelo.displayName} (${idTecnico})`;
+            
+            // Dejar preseleccionado el modelo Pro por defecto para análisis complejos
+            if (idTecnico === "gemini-1.5-pro") option.selected = true;
+            
+            select.appendChild(option);
+        });
+
+    } catch (error) {
+        console.error("Error cargando modelos:", error);
+        select.innerHTML = '<option value="">Error al conectar con Google</option>';
+    }
+}
         // === LÓGICA DE NAVEGACIÓN ===
         function handleRouting() {
             let hash = window.location.hash.replace('#', '') || 'home'; 
@@ -278,11 +336,11 @@
         let API_KEY = localStorage.getItem('gemini_key');
         function pedirClave() {
             let clave = prompt("Ingresa tu API Key de Gemini para usar el Generador BPMN:");
-            if (clave && clave.trim() !== "") { API_KEY = clave.trim(); localStorage.setItem('gemini_key', API_KEY); }
+            if (clave && clave.trim() !== "") { API_KEY = clave.trim(); localStorage.setItem('gemini_key', API_KEY); cargarModelosDisponibles();}
         }
         function cambiarClave() {
             let nueva = prompt("Nueva API Key:", API_KEY || "");
-            if (nueva && nueva.trim() !== "") { API_KEY = nueva.trim(); localStorage.setItem('gemini_key', API_KEY); alert("API Key guardada."); }
+            if (nueva && nueva.trim() !== "") { API_KEY = nueva.trim(); localStorage.setItem('gemini_key', API_KEY); alert("API Key guardada."); cargarModelosDisponibles();}
         }
 
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -309,21 +367,28 @@
 
         // === GENERADOR BPMN CORREGIDO (ENVUELTO EN SU FUNCIÓN ASYNC) ===
         async function generarBPMN() {
-            const promptText = document.getElementById('prompt').value;
-            if (!promptText.trim()) return alert("Describe un proceso.");
-            if (!API_KEY) return pedirClave();
+    const promptText = document.getElementById('prompt').value;
+    if (!promptText.trim()) return alert("Describe un proceso.");
+    if (!API_KEY) return pedirClave();
 
-            document.getElementById('btnGenerarBPMN').disabled = true;
-            document.getElementById('loadingSpinner').style.display = "inline-block";
-            document.getElementById('btnText').innerText = " Pensando...";
+    // === INICIO DEL PASO 4 ===
+    // Capturamos el modelo que el usuario ha seleccionado en el menú desplegable
+    const modeloSeleccionado = document.getElementById('modelSelector').value;
 
-            // Definición limpia utilizando constantes
-            const API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
-            const MODEL_NAME = "gemini-3.5-pro"; // Excelente relación velocidad/precisión para código XML
-            const URL = `${API_BASE_URL}/${MODEL_NAME}:generateContent?key=${API_KEY}`;
-            
-            // Instrucciones infalibles
-            const instrucciones = `Eres un Analista de Procesos Senior y experto técnico en BPMN 2.0.
+    if (!modeloSeleccionado) {
+        return alert("Por favor, espera a que carguen los modelos o selecciona uno de la lista.");
+    }
+    // === FIN DEL PASO 4 ===
+
+    document.getElementById('btnGenerarBPMN').disabled = true;
+    document.getElementById('loadingSpinner').style.display = "inline-block";
+    document.getElementById('btnText').innerText = " Pensando...";
+
+    // Armamos la URL inyectando el ID técnico correcto dinámicamente
+    const URL = `https://generativelanguage.googleapis.com/v1beta/models/${modeloSeleccionado}:generateContent?key=${API_KEY}`;
+    
+    // Instrucciones infalibles
+    const instrucciones = `Eres un Analista de Procesos Senior y experto técnico en BPMN 2.0.
 Tu objetivo es analizar la transcripción de una entrevista desordenada, entender el contexto general del negocio, filtrar el "ruido" (conversaciones irrelevantes, dudas, retrocesos en la charla) y estructurar el flujo de trabajo real.
 
 PASOS LÓGICOS QUE DEBES APLICAR INTERNAMENTE:
@@ -343,42 +408,44 @@ INSTRUCCIONES TÉCNICAS PARA EL XML:
 Transcripción de la entrevista a analizar:
 ${promptText}`;
 
-            try {
-                const response = await fetch(URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: [{ parts: [{ text: instrucciones }] }] })
-                });
+    try {
+        const response = await fetch(URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: instrucciones }] }] })
+        });
 
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(`Error ${response.status}: ${errorData.error?.message || 'Fallo de API'}`);
-                }
-
-                const data = await response.json();
-                let scriptGenerado = data.candidates[0].content.parts[0].text;
-
-                // Extracción Robusta
-                const xmlMatch = scriptGenerado.match(/<[\s\S]*>/);
-                if (xmlMatch) {
-                    scriptGenerado = xmlMatch[0].trim();
-                } else {
-                    scriptGenerado = scriptGenerado.replace(/```xml/gi, '').replace(/```/g, '').trim();
-                }
-
-                document.getElementById('scriptViewer').value = scriptGenerado;
-                document.getElementById('btnDescargarBPMN').style.display = 'block';
-                mostrarMensaje("¡Diagrama generado con éxito!", "success");
-                
-            } catch (err) {
-                console.error(err);
-                mostrarMensaje(err.message, "danger");
-            } finally {
-                document.getElementById('btnGenerarBPMN').disabled = false;
-                document.getElementById('loadingSpinner').style.display = "none";
-                document.getElementById('btnText').innerText = "Generar XML BPMN";
-            }
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(`Error ${response.status}: ${errorData.error?.message || 'Fallo de API'}`);
         }
+
+        const data = await response.json();
+        let scriptGenerado = data.candidates[0].content.parts[0].text;
+
+        // Extracción Robusta
+        const xmlMatch = scriptGenerado.match(/<[\s\S]*>/);
+        if (xmlMatch) {
+            scriptGenerado = xmlMatch[0].trim();
+        } else {
+            scriptGenerado = scriptGenerado.replace(/```xml/gi, '').replace(/```/g, '').trim();
+        }
+
+        document.getElementById('scriptViewer').value = scriptGenerado;
+        document.getElementById('btnDescargarBPMN').style.display = 'block';
+        // Descomenta la siguiente línea si implementaste el botón de correo
+        // document.getElementById('btnEnviarCorreo').style.display = 'block'; 
+        mostrarMensaje("¡Diagrama generado con éxito!", "success");
+        
+    } catch (err) {
+        console.error(err);
+        mostrarMensaje(err.message, "danger");
+    } finally {
+        document.getElementById('btnGenerarBPMN').disabled = false;
+        document.getElementById('loadingSpinner').style.display = "none";
+        document.getElementById('btnText').innerText = "Generar XML BPMN";
+    }
+}
 
         function descargarBPMN() {
             const blob = new Blob([document.getElementById('scriptViewer').value], { type: 'text/xml' });
@@ -518,7 +585,7 @@ ${promptText}`;
         window.onload = function() {
             initSmartForm();
             handleRouting(); 
-            if (!API_KEY) pedirClave(); 
+            if (!API_KEY) pedirClave() cargarModelosDisponibles();; 
         };
     </script>
 </body>
