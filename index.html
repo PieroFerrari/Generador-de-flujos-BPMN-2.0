@@ -319,21 +319,29 @@
 
             // Definición limpia utilizando constantes
             const API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
-            const MODEL_NAME = "gemini-3.5-flash"; // Excelente relación velocidad/precisión para código XML
+            const MODEL_NAME = "gemini-3.5-pro"; // Excelente relación velocidad/precisión para código XML
             const URL = `${API_BASE_URL}/${MODEL_NAME}:generateContent?key=${API_KEY}`;
             
             // Instrucciones infalibles
-            const instrucciones = `Eres un experto técnico en BPMN 2.0. 
-            Convierte la descripción en código XML BPMN 2.0 estricto.
-            INSTRUCCIONES TÉCNICAS:
-            1. Si el proceso involucra múltiples entidades independientes (ej. Usuario y Sistema), DEBES usar <bpmn:collaboration>, definiendo los <bpmn:participant> correspondientes, y anidar los <bpmn:process> respectivos.
-            2. Si los participantes se comunican, usa <bpmn:messageFlow> entre los nodos correctos.
-            3. Cada elemento debe tener su <bpmndi:BPMNShape> con <dc:Bounds> dentro de <bpmndi:BPMNDiagram>.
-            4. Usa 'x' incremental (+200) y 'y' fijos según el participante para evitar que Bizagi arroje errores de superposición (instancia).
-            5. Asigna IDs únicos (ej: Task_Recopilar, Event_Inicio_Sistema).
-            6. Usa los tipos de tarea correctos: Service Task (engranaje) para procesamiento del sistema, Receive Task / Send Task (sobre) para correos, y Timer Catch Event (reloj) para esperas, User Task para tareas de usuario.
-            7. Devuelve SOLO código XML. ESTRICTAMENTE PROHIBIDO texto adicional o formato markdown.
-            Proceso: ${promptText}`;
+            const instrucciones = `Eres un Analista de Procesos Senior y experto técnico en BPMN 2.0.
+Tu objetivo es analizar la transcripción de una entrevista desordenada, entender el contexto general del negocio, filtrar el "ruido" (conversaciones irrelevantes, dudas, retrocesos en la charla) y estructurar el flujo de trabajo real.
+
+PASOS LÓGICOS QUE DEBES APLICAR INTERNAMENTE:
+1. Identifica a los actores principales (roles o sistemas) mencionados en la charla.
+2. Identifica el evento de inicio (qué gatilla el proceso) y el evento de fin.
+3. Extrae la secuencia lógica paso a paso, corrigiendo los saltos temporales que el entrevistado haya hecho al hablar.
+4. Si hay decisiones ("a veces pasa esto, a veces lo otro"), tradúcelas en compuertas lógicas (Gateways) Exclusivas o Paralelas según el contexto.
+5. Traduce este flujo depurado a código XML BPMN 2.0 estricto.
+6. Usa los tipos de tarea correctos: Service Task (engranaje) para procesamiento del sistema, Receive Task / Send Task (sobre) para correos, y Timer Catch Event (reloj) para esperas, User Task para tareas de usuario. 
+
+INSTRUCCIONES TÉCNICAS PARA EL XML:
+- Usa <bpmn:collaboration> si interactúan áreas distintas o sistemas, definiendo los <bpmn:participant> y <bpmn:laneSet>.
+- Cada elemento debe tener su <bpmndi:BPMNShape> con <dc:Bounds> dentro de <bpmndi:BPMNDiagram>.
+- Usa 'x' incremental (+200) y 'y' fijos según el participante para evitar superposiciones.
+- Devuelve SOLO el código XML. ESTRICTAMENTE PROHIBIDO dar explicaciones, resúmenes en texto o formato markdown. El output debe comenzar directamente con <?xml o <bpmn:definitions>.
+
+Transcripción de la entrevista a analizar:
+${promptText}`;
 
             try {
                 const response = await fetch(URL, {
