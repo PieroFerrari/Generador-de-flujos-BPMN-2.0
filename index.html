@@ -326,12 +326,13 @@
             const instrucciones = `Eres un experto técnico en BPMN 2.0. 
             Convierte la descripción en código XML BPMN 2.0 estricto.
             INSTRUCCIONES TÉCNICAS:
-            1. Incluye <bpmn:process> y <bpmndi:BPMNDiagram>.
-            2. Cada elemento debe tener su <bpmndi:BPMNShape> con <dc:Bounds>.
-            3. No uses markdown (sin \`\`\`xml). Devuelve SOLO el código.
-            4. IMPORTANTE: Usa 'x' incremental (+200) para que Bizagi no dé error de instancia.
-            5. ESTRICTAMENTE PROHIBIDO dar cualquier tipo de comentario, explicación, idea o sugerencia. El texto que brindes debe ser Código XML BPMN 2.0 estricto.
-            6. Debes reconocer a los ejectores y ubicarlos en carriles según corresponda.
+            1. Si el proceso involucra múltiples entidades independientes (ej. Usuario y Sistema), DEBES usar <bpmn:collaboration>, definiendo los <bpmn:participant> correspondientes, y anidar los <bpmn:process> respectivos.
+            2. Si los participantes se comunican, usa <bpmn:messageFlow> entre los nodos correctos.
+            3. Cada elemento debe tener su <bpmndi:BPMNShape> con <dc:Bounds> dentro de <bpmndi:BPMNDiagram>.
+            4. Usa 'x' incremental (+200) y 'y' fijos según el participante para evitar que Bizagi arroje errores de superposición (instancia).
+            5. Asigna IDs únicos (ej: Task_Recopilar, Event_Inicio_Sistema).
+            6. Usa los tipos de tarea correctos: Service Task (engranaje) para procesamiento del sistema, Receive Task / Send Task (sobre) para correos, y Timer Catch Event (reloj) para esperas, User Task para tareas de usuario.
+            7. Devuelve SOLO código XML. ESTRICTAMENTE PROHIBIDO texto adicional o formato markdown.
             Proceso: ${promptText}`;
 
             try {
