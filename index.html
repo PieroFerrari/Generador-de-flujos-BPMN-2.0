@@ -317,7 +317,10 @@
             document.getElementById('loadingSpinner').style.display = "inline-block";
             document.getElementById('btnText').innerText = " Pensando...";
 
-            const URL = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+            // Definición limpia utilizando constantes
+            const API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
+            const MODEL_NAME = "gemini-3.5-flash"; // Excelente relación velocidad/precisión para código XML
+            const URL = `${API_BASE_URL}/${MODEL_NAME}:generateContent?key=${API_KEY}`;
             
             // Instrucciones infalibles
             const instrucciones = `Eres un experto técnico en BPMN 2.0. 
